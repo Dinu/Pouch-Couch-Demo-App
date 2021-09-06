@@ -1,4 +1,4 @@
-import { Component ,Input, OnInit} from '@angular/core';
+import { Component ,Input } from '@angular/core';
 
 import PouchDB from 'pouchdb-browser';
 import PouchDBFind from 'pouchdb-find';
@@ -14,7 +14,7 @@ type docConfig = {
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
 
   title = 'pouchApp';
 
@@ -27,24 +27,31 @@ export class AppComponent implements OnInit {
             opts.headers.set('X-Auth-CouchDB-Roles', '_admin');
             return PouchDB.fetch(url, opts);
           }
-        });
+  });
 
 
   @Input() data:string[] = []
 
   constructor(){
 
-    this.ldb.sync(this.rdb).on('complete', function () {
-      console.log('sucessfully synced from ldb')
-    }).on('error', function (err:any) {
-      console.log(err)
-    });
+    this.doc._id = '003'
+    this.sync()
+    this.statusCheck()
                   
   }
 
-  ngOnInit(): void {
 
-    this.doc._id = '003'
+  sync(){
+
+    this.ldb.sync(this.rdb).on('complete', function () {
+      console.log('sucessfully synced')
+    }).on('error', function (err:any) {
+      console.log(err)
+    });
+
+  }
+
+  statusCheck(){
 
     if(navigator.onLine === true){
       console.log('Intially online')
@@ -55,38 +62,18 @@ export class AppComponent implements OnInit {
       this.intitialDatafromDB(this.ldb)
     }
 
-    // this.ldb.destroy().then(function (response:any) {
-    //   // success
-    // }).catch(function (err:any) {
-    //   console.log(err);
-    // });
-
-    // this.rdb.destroy().then(function (response) {
-    //   // success
-    // }).catch(function (err) {
-    //   console.log(err);
-    // });
-
   }
 
-
   addNewsEvent(text:any){
-  
-    this.data.push(text.value)
-    this.doc.content = this.data
-    text.value = ''
- 
-    console.log(this.doc)
     
     if(navigator.onLine === true){
       console.log('online at addnews')
-      this.updateDB(this.rdb)
+      this.updateDB(this.rdb,text)
     }
     else{
       console.log('offline at addnews')
-      this.updateDB(this.ldb)
+      this.updateDB(this.ldb,text)
     }
-
 
   }
 
@@ -104,16 +91,41 @@ export class AppComponent implements OnInit {
     
   }
 
-  updateDB(db:any){
+
+  updateDB(db:any,text:any){
 
     db.get('003').then((doc1:docConfig) => {
-      doc1.content = this.doc.content
-      db.put(doc1)
+      doc1.content.push(text.value)
+      console.log(doc1.content)
+      text.value = ''
+      db.put(doc1).then(()=>{this.sync()})
     }).catch((err:any) => {
       console.log(err)
     })
-  
   }
 
+  changes_ldb = this.ldb.changes({
+    since: 'now',
+    live: true,
+    include_docs: true
+    }).on('change', (change:any) => {
+      this.data = change.doc.content
+    }).on('error', function (err:any) {
+      console.log(err);
+  });
+
+
+  changes_rdb = this.rdb.changes({
+    since: 'now',
+    live: true,
+    include_docs: true
+    }).on('change', (change:any) => {
+      this.data = change.doc.content
+    }).on('error', function (err:any) {
+      console.log(err);
+  });
+
 }
+
+
 
