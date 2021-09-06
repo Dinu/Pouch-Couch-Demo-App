@@ -1,0 +1,17 @@
+<div>
+
+  <input class="addnewsinput" type="text" #input>
+  <button class="text font2 tc1" (click)="addNewsEvent(input)">Add News</button><br> 
+
+</div>
+
+
+<div class="ntext" *ngFor="let item of data">
+
+  <ul>
+      <li>
+          {{item}}
+      </li>
+  </ul>
+
+</div>

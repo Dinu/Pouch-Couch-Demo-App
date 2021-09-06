@@ -1,0 +1,27 @@
+/* You can add global styles to this file, and also import other style files */
+
+
+.addnewsinput{
+    height: 25px;
+    width: 900px;
+  }
+
+.text {
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    margin: 20px 5px;
+}
+
+.font2{
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.tc1 {
+    background-color: #4ec953;
+    border: solid #4ec953;
+    border-radius: 20px;
+    border-width: 10px 10px;
+} 
