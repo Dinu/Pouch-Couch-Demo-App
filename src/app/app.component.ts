@@ -18,7 +18,11 @@ export class AppComponent {
 
   title = 'pouchApp';
 
+  @Input() data:string[] = []
+
   ldb:any = new PouchDB('local')
+
+  onlineListen: any;
 
   doc:docConfig = <docConfig>{}
 
@@ -29,29 +33,11 @@ export class AppComponent {
           }
   });
 
-
-  @Input() data:string[] = []
-
   constructor(){
 
     this.doc._id = '003'
-    this.sync()
-    this.statusCheck()
-                  
-  }
-
-
-  sync(){
-
-    this.ldb.sync(this.rdb).on('complete', function () {
-      console.log('sucessfully synced')
-    }).on('error', function (err:any) {
-      console.log(err)
-    });
-
-  }
-
-  statusCheck(){
+    // this.sync()
+    // this.statusCheck()
 
     if(navigator.onLine === true){
       console.log('Intially online')
@@ -62,7 +48,35 @@ export class AppComponent {
       this.intitialDatafromDB(this.ldb)
     }
 
+    this.onlineListen = window.addEventListener('online', this.sync);
+
   }
+
+
+  sync = () => {
+
+    this.ldb.sync(this.rdb).on('complete', function () {
+      console.log('sucessfully synced')
+    }).on('error', function (err:any) {
+      console.log(err)
+    });
+
+  }
+
+  
+
+  // statusCheck(){
+
+  //   if(navigator.onLine === true){
+  //     console.log('Intially online')
+  //     this.intitialDatafromDB(this.rdb)
+  //   }
+  //   else{
+  //     console.log('Intially offline')
+  //     this.intitialDatafromDB(this.ldb)
+  //   }
+
+  // }
 
   addNewsEvent(text:any){
     
@@ -96,24 +110,35 @@ export class AppComponent {
 
     db.get('003').then((doc1:docConfig) => {
       doc1.content.push(text.value)
-      console.log(doc1.content)
       text.value = ''
-      db.put(doc1).then(()=>{this.sync()})
+      db.put(doc1).then(()=>{
+
+        // this.sync()
+
+        if(navigator.onLine === true){
+          console.log('Intially online')
+          this.sync()
+        }
+        else{
+          console.log('Intially offline')
+          this.intitialDatafromDB(this.ldb)
+        }
+      })
     }).catch((err:any) => {
       console.log(err)
     })
   }
 
-  changes_ldb = this.ldb.changes({
-    since: 'now',
-    live: true,
-    include_docs: true
-    }).on('change', (change:any) => {
-      this.data = change.doc.content
-    }).on('error', function (err:any) {
-      console.log(err);
-  });
-
+  // changes_ldb = this.ldb.changes({
+  //   since: 'now',
+  //   live: true,
+  //   include_docs: true
+  //   }).on('change', (change:any) => {
+  //     this.data = change.doc.content
+  //     console.log(change)
+  //   }).on('error',  (err:any) => {
+  //     console.log(err);
+  // });
 
   changes_rdb = this.rdb.changes({
     since: 'now',
@@ -121,9 +146,13 @@ export class AppComponent {
     include_docs: true
     }).on('change', (change:any) => {
       this.data = change.doc.content
-    }).on('error', function (err:any) {
+      this.sync()
+      console.log(change)
+    }).on('error', (err:any) => {
       console.log(err);
   });
+
+  
 
 }
 
