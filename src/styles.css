@@ -3,7 +3,12 @@
 
 .addnewsinput{
     height: 25px;
-    width: 900px;
+    width: 600px;
+  }
+
+  .addnewsinput2{
+    height: 25px;
+    width: 90px;
   }
 
 .text {
@@ -11,17 +16,26 @@
     text-align: center;
     text-decoration: none;
     display: inline-block;
-    margin: 20px 5px;
+    margin: 5px 20px;
 }
 
 .font2{
-    font-size: 15px;
+    font-size: 16px;
     cursor: pointer;
 }
 
 .tc1 {
     background-color: #4ec953;
     border: solid #4ec953;
+    width:200px;
+    border-radius: 20px;
+    border-width: 10px 10px;
+} 
+
+.tc2 {
+    background-color: #4ec1c9;
+    border: solid #4ec1c9;
+    width:300px;
     border-radius: 20px;
     border-width: 10px 10px;
 } 
