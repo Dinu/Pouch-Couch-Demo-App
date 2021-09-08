@@ -29,7 +29,7 @@ export class AppComponent {
 
   title = 'pouchApp';
 
-  @Input() data:dataconfig[] = []
+  @Input() data:any = []
   @Input() upVotedData:any = []
   @Input() latestNewsData:any = []
  
@@ -96,17 +96,46 @@ export class AppComponent {
 
   intitialDatafromDB(db:any){
 
-    db.allDocs({
-      include_docs: true,
-      attachments: true
-    }).then( (result:any) => {
+    db.query('allDocView',{descending:true}).then( (result:any) => {
       this.data = result.rows
       console.log(result)
     }).catch( (err:any) => {
-      this.data = []
+      this.allDocView(db)
       console.log(err);
     });
     
+  }
+
+  allDocView(db:any){
+
+    let emit:any
+    let currentTime:number
+
+    let ddoc = {
+      _id: '_design/allDocView',
+      views: {
+        allDocView: {
+          map: function(doc:any) {
+
+            if(doc.news){
+              emit([doc.news])
+            }
+          }.toString()
+        }
+      }
+    }
+    
+    
+    db.put(ddoc).catch(function (err:any) {
+      if (err.name !== 'conflict') {
+        throw err;
+      }
+    }).then( () => {
+      this.intitialDatafromDB(db)
+    }).catch(function (err:any) {
+      console.log(err);
+    });
+
   }
 
 
@@ -180,61 +209,94 @@ export class AppComponent {
 
   upVotedNewsEvent(db:any){
 
-    // db.find({
-    //   selector: {upVote: { $gte: 6 } },
-    //   sort: ['upVote'],
-    //   limit:5,
-    // }).then( (result:any) => {
-    //   console.log(result)
-    // }).catch( (err:any) => {
-    //   console.log(err);
-    //   db.createIndex({
-    //     index: {fields: ['upVote']}
-    //   }).then(() => { this.upVotedNewsEvent(db)})
-
-    // });
-
-    this.ldb.query(this.mapUpVote,{descending:false,limit:5}).then( (result:any) => {
-      console.log(result)
+    db.query('upVoteNewsView',{descending:false,limit:5}).then( (result:any) => {
       this.upVotedData = result.rows
-    }).catch(function (err:any) {
+    }).catch( (err:any) => {
+      this.upVoteNewsView(db)
       console.log(err);
     });
 
-
   }
 
-  mapUpVote = (doc:any,emit:any) => {
-
-    if(doc.upVote >= 7 ){
-
-      emit([doc.news])
-
-    }
- 
-  }
 
   latestNewsEvent(db:any){
 
-    this.ldb.query(this.mapLatest,{descending:true ,limit:5}).then( (result:any) => {
-      console.log(result)
+    db.query('latestNewsView',{descending:true ,limit:5}).then( (result:any) => {
       this.latestNewsData = result.rows
+    }).catch( (err:any) => {
+      this.latestNewsView(db)
+      console.log(err);
+    });
+
+  }
+
+  
+
+  upVoteNewsView(db:any){
+
+    let emit:any
+
+    let ddoc = {
+      _id: '_design/upVoteNewsView',
+      views: {
+        upVoteNewsView: {
+          map: function(doc:any) {
+            if(doc.upVote >= 7 ){
+              emit([doc.news])
+            }
+          }.toString()
+        }
+      }
+    }
+    
+    
+    db.put(ddoc).catch(function (err:any) {
+      if (err.name !== 'conflict') {
+        throw err;
+      }
+    }).then( () => {
+      this.upVotedNewsEvent(db)
     }).catch(function (err:any) {
       console.log(err);
     });
 
   }
 
-  mapLatest = (doc:any,emit:any) => {
+  latestNewsView(db:any){
 
-    this.currentTime = Math.floor(new Date().getTime()/1000 ) 
+    let emit:any
+    let currentTime:number
 
-    if(doc.timestamp < this.currentTime && doc.timestamp > this.currentTime-86400){
-      emit([doc.news])
+    let ddoc = {
+      _id: '_design/latestNewsView',
+      views: {
+        latestNewsView: {
+          map: function(doc:any) {
+            currentTime = Math.floor(new Date().getTime()/1000 ) 
+
+            if(doc.timestamp < currentTime && doc.timestamp > currentTime-86400){
+              emit([doc.news])
+            }
+          }.toString()
+        }
+      }
     }
-
+    
+    
+    db.put(ddoc).catch(function (err:any) {
+      if (err.name !== 'conflict') {
+        throw err;
+      }
+    }).then( () => {
+      this.latestNewsEvent(db)
+    }).catch(function (err:any) {
+      console.log(err);
+    });
 
   }
+
+
+
 
 
 }
@@ -259,3 +321,7 @@ export class AppComponent {
 // Only native bulls to be allowed in Jallikattu: Madras HC bars participation of foreign breeds
 // Senior nuclear scientist Dr Balasubramanian Venkatraman is new Director of IGCAR
 // Tamil Nadu coast on high alert owing to possible LTTE-drug syndicate threat
+
+
+
+
