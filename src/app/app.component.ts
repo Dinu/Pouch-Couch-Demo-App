@@ -1,5 +1,6 @@
 import { Component ,Input } from '@angular/core';
 
+
 import PouchDB from 'pouchdb-browser';
 import PouchDBFind from 'pouchdb-find';
 PouchDB.plugin(PouchDBFind);
@@ -96,9 +97,188 @@ export class AppComponent {
 
   intitialDatafromDB(db:any){
 
+    db.find({
+
+      selector: { 
+        timestamp: { $gt:null  },
+      },
+      sort:[{'timestamp':'desc'}],
+      fields:['news']
+    
+    }).then( (result:any) => {
+      this.data = result.docs
+      console.log(result.docs)
+    }).catch( (err:any) => {
+      this.createIndex(db)
+      console.log(err);
+    });
+
+
+  }
+
+  createIndex(db:any){
+
+    db.createIndex({
+      index: {fields: ['timestamp'],
+    }
+    }).then(() => {
+      this.intitialDatafromDB(db)
+    })
+
+  }
+
+  updateDB(db:any,text:any,voteIn:any){
+
+    this.doc._id = Math.floor(new Date().getTime()/1000 ).toString()
+    this.doc.news = text.value
+    this.doc.timestamp = Math.floor(new Date().getTime()/1000 )
+    this.doc.upVote = Number(voteIn.value)
+
+    text.value = ''
+    voteIn.value = ''
+
+    db.put(this.doc).then(()=>{
+
+      if(navigator.onLine === true){
+        console.log('updateDB online')
+        this.sync()
+      }
+      else{
+        console.log('updateDB offline')
+        this.intitialDatafromDB(this.ldb)
+      }
+      }).catch((err:any) => {
+        console.log(err)
+    })
+
+  }
+
+  changes_rdb = this.rdb.changes({
+    since: 'now',
+    live: true,
+    include_docs: true
+    }).on('change', (change:any) => {
+      this.data = change.doc.content
+      this.intitialDatafromDB(this.rdb)
+      this.heading = 'The News Content'
+      this.sync()
+      console.log(change)
+    }).on('error', (err:any) => {
+      console.log(err)
+  })
+
+  latestNews(){
+
+    this.latestNewsBool = ! this.latestNewsBool
+    this.upVotedNewsBool = false
+
+    if(navigator.onLine === true && this.latestNewsBool === true){
+      this.latestNewsEvent(this.rdb)
+    }
+    else if(this.latestNewsBool === true){
+      this.latestNewsEvent(this.ldb)
+    }
+
+  }
+
+  upVotedNews(){
+
+    this.upVotedNewsBool = ! this.upVotedNewsBool
+    this.latestNewsBool = false
+
+    if(navigator.onLine === true && this.upVotedNewsBool === true){
+      this.upVotedNewsEvent(this.rdb)
+    }
+    else if(this.upVotedNewsBool === true){
+      this.upVotedNewsEvent(this.ldb)
+    }
+
+  }
+
+  upVotedNewsEvent(db:any){
+
+    db.find({
+      sort:[{'upVote':'desc'}],
+      selector: { 
+        upVote:{ $gte: 7 }
+      },
+      fields:['news','upVote'],
+      limit:5
+    
+    }).then( (result:any) => {
+      this.upVotedData = result.docs
+      console.log(result.docs)
+    }).catch( (err:any) => {
+      this.createIndexUpVote(db)
+      console.log(err);
+    });
+
+  }
+
+  createIndexUpVote(db:any){
+
+    db.createIndex({
+      index: {fields: ['upVote']}
+    }).then(() => {
+      this.upVotedNewsEvent(db)
+    })
+
+  }
+
+
+  latestNewsEvent(db:any){
+
+    db.find({
+      selector: { 
+        timestamp: { $gt:null  },
+      },
+      sort:[{'timestamp':'desc'}],
+      fields:['news'],
+      limit:5
+
+    }).then( (result:any) => {
+      this.latestNewsData = result.docs
+      console.log(result.docs)
+    }).catch( (err:any) => {
+      this.createIndex(db)
+      console.log(err);
+    });
+
+  }
+
+
+}
+
+
+
+
+
+
+
+
+// 86400000
+
+// TN seeks 1 crore more Covid vaccine doses from Centre
+// 15 districts in Tamil Nadu report marginal increase in fresh Covid infections
+// Govt urged to speed up power supply for agriculture sector
+// Nipah virus: Screening tightened at 13 check posts along Tamil Nadu
+// Tamil Nadu: No more toll on OMR, yet cabs charge extra
+// Covid cuts Tamil Nadu Right to Education admissions by 29%
+// State Election Commission to hold all-party meet to discuss Tamil Nadu local polls
+// Only native bulls to be allowed in Jallikattu: Madras HC bars participation of foreign breeds
+// Senior nuclear scientist Dr Balasubramanian Venkatraman is new Director of IGCAR
+// Tamil Nadu coast on high alert owing to possible LTTE-drug syndicate threat
+
+//**************************************************************************************************
+
+// By using view method
+
+/*
+
+  intitialDatafromDB(db:any){
+
     db.query('allDocView',{descending:true}).then( (result:any) => {
       this.data = result.rows
-      console.log(result)
     }).catch( (err:any) => {
       this.allDocView(db)
       console.log(err);
@@ -117,9 +297,8 @@ export class AppComponent {
         allDocView: {
           map: function(doc:any) {
 
-            if(doc.news){
-              emit([doc.news])
-            }
+              emit(doc.timestamp,doc.news)
+            
           }.toString()
         }
       }
@@ -209,7 +388,7 @@ export class AppComponent {
 
   upVotedNewsEvent(db:any){
 
-    db.query('upVoteNewsView',{descending:false,limit:5}).then( (result:any) => {
+    db.query('upVoteNewsView',{descending:true,limit:5}).then( (result:any) => {
       this.upVotedData = result.rows
     }).catch( (err:any) => {
       this.upVoteNewsView(db)
@@ -221,10 +400,9 @@ export class AppComponent {
 
   latestNewsEvent(db:any){
 
-    db.query('latestNewsView',{descending:true ,limit:5}).then( (result:any) => {
+    db.query('allDocView',{descending:true ,limit:5}).then( (result:any) => {
       this.latestNewsData = result.rows
     }).catch( (err:any) => {
-      this.latestNewsView(db)
       console.log(err);
     });
 
@@ -242,7 +420,7 @@ export class AppComponent {
         upVoteNewsView: {
           map: function(doc:any) {
             if(doc.upVote >= 7 ){
-              emit([doc.news])
+              emit(doc.upVote,doc.news)
             }
           }.toString()
         }
@@ -262,34 +440,208 @@ export class AppComponent {
 
   }
 
-  latestNewsView(db:any){
 
-    let emit:any
-    let currentTime:number
 
-    let ddoc = {
-      _id: '_design/latestNewsView',
-      views: {
-        latestNewsView: {
-          map: function(doc:any) {
-            currentTime = Math.floor(new Date().getTime()/1000 ) 
 
-            if(doc.timestamp < currentTime && doc.timestamp > currentTime-86400){
-              emit([doc.news])
-            }
-          }.toString()
-        }
-      }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  //******************************************************************************************************************* 
+
+
+  // Bu using Index method
+
+  /*
+
+
+   intitialDatafromDB(db:any){
+
+    db.find({
+
+      selector: { 
+        timestamp: { $gt:null  },
+      },
+      sort:[{'timestamp':'desc'}],
+      fields:['news']
+    
+    }).then( (result:any) => {
+      this.data = result.docs
+      console.log(result.docs)
+    }).catch( (err:any) => {
+      this.createIndex(db)
+      console.log(err);
+    });
+
+
+  }
+
+  createIndex(db:any){
+
+    db.createIndex({
+      index: {fields: ['timestamp'],
     }
-    
-    
-    db.put(ddoc).catch(function (err:any) {
-      if (err.name !== 'conflict') {
-        throw err;
+    }).then(() => {
+      this.intitialDatafromDB(db)
+    })
+
+  }
+
+  updateDB(db:any,text:any,voteIn:any){
+
+    this.doc._id = Math.floor(new Date().getTime()/1000 ).toString()
+    this.doc.news = text.value
+    this.doc.timestamp = Math.floor(new Date().getTime()/1000 )
+    this.doc.upVote = Number(voteIn.value)
+
+    text.value = ''
+    voteIn.value = ''
+
+    db.put(this.doc).then(()=>{
+
+      if(navigator.onLine === true){
+        console.log('updateDB online')
+        this.sync()
       }
-    }).then( () => {
-      this.latestNewsEvent(db)
-    }).catch(function (err:any) {
+      else{
+        console.log('updateDB offline')
+        this.intitialDatafromDB(this.ldb)
+      }
+      }).catch((err:any) => {
+        console.log(err)
+    })
+
+  }
+
+  changes_rdb = this.rdb.changes({
+    since: 'now',
+    live: true,
+    include_docs: true
+    }).on('change', (change:any) => {
+      this.data = change.doc.content
+      this.intitialDatafromDB(this.rdb)
+      this.heading = 'The News Content'
+      this.sync()
+      console.log(change)
+    }).on('error', (err:any) => {
+      console.log(err)
+  })
+
+  latestNews(){
+
+    this.latestNewsBool = ! this.latestNewsBool
+    this.upVotedNewsBool = false
+
+    if(navigator.onLine === true && this.latestNewsBool === true){
+      this.latestNewsEvent(this.rdb)
+    }
+    else if(this.latestNewsBool === true){
+      this.latestNewsEvent(this.ldb)
+    }
+
+  }
+
+  upVotedNews(){
+
+    this.upVotedNewsBool = ! this.upVotedNewsBool
+    this.latestNewsBool = false
+
+    if(navigator.onLine === true && this.upVotedNewsBool === true){
+      this.upVotedNewsEvent(this.rdb)
+    }
+    else if(this.upVotedNewsBool === true){
+      this.upVotedNewsEvent(this.ldb)
+    }
+
+  }
+
+  upVotedNewsEvent(db:any){
+
+    db.find({
+      sort:[{'upVote':'desc'}],
+      selector: { 
+        upVote:{ $gte: 7 }
+      },
+      fields:['news','upVote'],
+      limit:5
+    
+    }).then( (result:any) => {
+      this.upVotedData = result.docs
+      console.log(result.docs)
+    }).catch( (err:any) => {
+      this.createIndexUpVote(db)
+      console.log(err);
+    });
+
+  }
+
+  createIndexUpVote(db:any){
+
+    db.createIndex({
+      index: {fields: ['upVote']}
+    }).then(() => {
+      this.upVotedNewsEvent(db)
+    })
+
+  }
+
+
+  latestNewsEvent(db:any){
+
+    db.find({
+      selector: { 
+        timestamp: { $gt:null  },
+      },
+      sort:[{'timestamp':'desc'}],
+      fields:['news'],
+      limit:5
+
+    }).then( (result:any) => {
+      this.latestNewsData = result.docs
+      console.log(result.docs)
+    }).catch( (err:any) => {
+      this.createIndex(db)
       console.log(err);
     });
 
@@ -299,29 +651,5 @@ export class AppComponent {
 
 
 
-}
-
-// 86400000
-
-
-
-
-
-
-
-
-
-// TN seeks 1 crore more Covid vaccine doses from Centre
-// 15 districts in Tamil Nadu report marginal increase in fresh Covid infections
-// Govt urged to speed up power supply for agriculture sector
-// Nipah virus: Screening tightened at 13 check posts along Tamil Nadu
-// Tamil Nadu: No more toll on OMR, yet cabs charge extra
-// Covid cuts Tamil Nadu Right to Education admissions by 29%
-// State Election Commission to hold all-party meet to discuss Tamil Nadu local polls
-// Only native bulls to be allowed in Jallikattu: Madras HC bars participation of foreign breeds
-// Senior nuclear scientist Dr Balasubramanian Venkatraman is new Director of IGCAR
-// Tamil Nadu coast on high alert owing to possible LTTE-drug syndicate threat
-
-
-
+  */
 
