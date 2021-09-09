@@ -82,6 +82,7 @@ export class AppComponent {
 
   }
 
+  
   addNewsEvent(text:any, voteIn:any){
     
     if(navigator.onLine === true){
