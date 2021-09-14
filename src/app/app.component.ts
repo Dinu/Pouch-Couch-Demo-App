@@ -1,8 +1,10 @@
-import { Component ,Input } from '@angular/core';
+import { ApplicationRef, Component ,Input } from '@angular/core';
+import { SwUpdate } from '@angular/service-worker';
 
 
 import PouchDB from 'pouchdb-browser';
 import PouchDBFind from 'pouchdb-find';
+import { interval } from 'rxjs';
 PouchDB.plugin(PouchDBFind);
 
 
@@ -49,14 +51,17 @@ export class AppComponent {
 
   heading:string = ''
 
+
   rdb = new PouchDB('http://localhost:5984/r2', {
           fetch: function (url, opts:any) {
             opts.headers.set('X-Auth-CouchDB-Roles', '_admin');
+            opts.headers.set('X-Auth-CouchDB-UserName', 'admin');
+            opts.headers.set('X-Auth-CouchDB-Token', 'e3fe35d3d979846aa9b79f1b1c4394aaffd8d768');
             return PouchDB.fetch(url, opts);
           }
   });
 
-  constructor(){
+  constructor(updates:SwUpdate, appRef:ApplicationRef){
 
     if(navigator.onLine === true){
       console.log('Intially online')
@@ -68,6 +73,29 @@ export class AppComponent {
     }
 
     this.onlineListen = window.addEventListener('online', this.sync);
+
+    updates.available.subscribe(event => {
+      console.log('current version is', event.current)
+      console.log('available version is', event.available)
+      if(confirm('update available')){
+      updates.activateUpdate().then(() => location.reload())
+      }
+    })
+
+    updates.activated.subscribe(event => {
+      console.log('old version was', event.previous)
+      console.log('new version is', event.current)
+    })
+
+    appRef.isStable.subscribe((isStable) => {
+      if(isStable){
+        const timeInt = interval(20000)
+        timeInt.subscribe(()=>{
+          updates.checkForUpdate().then(() => console.log('checked'))
+          console.log('update checked')
+        })
+      }
+    } )
 
   }
 
