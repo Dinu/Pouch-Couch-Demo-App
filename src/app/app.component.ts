@@ -89,7 +89,7 @@ export class AppComponent {
 
     appRef.isStable.subscribe((isStable) => {
       if(isStable){
-        const timeInt = interval(20000)
+        const timeInt = interval(1*60*60*1000)
         timeInt.subscribe(()=>{
           updates.checkForUpdate().then(() => console.log('checked'))
           console.log('update checked')
@@ -126,35 +126,46 @@ export class AppComponent {
 
   intitialDatafromDB(db:any){
 
-    db.find({
-
-      selector: { 
-        timestamp: { $gt:null  },
-      },
-      sort:[{'timestamp':'desc'}],
-      fields:['news']
-    
-    }).then( (result:any) => {
-      this.data = result.docs
-      console.log(result.docs)
+    db.query('allDocViews',{descending:true}).then( (result:any) => {
+      this.data = result.rows
     }).catch( (err:any) => {
-      this.createIndex(db)
+      this.allDocView(db)
+      console.log(err);
+    });
+    
+  }
+
+  allDocView(db:any){
+
+    let emit:any
+    let currentTime:number
+
+    let ddoc = {
+      _id: '_design/allDocViews',
+      views: {
+        allDocViews: {
+          map: function(doc:any) {
+
+              emit(doc.timestamp,doc.news)
+            
+          }.toString()
+        }
+      }
+    }
+    
+    
+    db.put(ddoc).catch(function (err:any) {
+      if (err.name !== 'conflict') {
+        throw err;
+      }
+    }).then( () => {
+      this.intitialDatafromDB(db)
+    }).catch(function (err:any) {
       console.log(err);
     });
 
-
   }
 
-  createIndex(db:any){
-
-    db.createIndex({
-      index: {fields: ['timestamp'],
-    }
-    }).then(() => {
-      this.intitialDatafromDB(db)
-    })
-
-  }
 
   updateDB(db:any,text:any,voteIn:any){
 
@@ -226,54 +237,58 @@ export class AppComponent {
 
   upVotedNewsEvent(db:any){
 
-    db.find({
-      sort:[{'upVote':'desc'}],
-      selector: { 
-        upVote:{ $gte: 7 }
-      },
-      fields:['news','upVote'],
-      limit:5
-    
-    }).then( (result:any) => {
-      this.upVotedData = result.docs
-      console.log(result.docs)
+    db.query('upVoteNewsView',{descending:true,limit:5}).then( (result:any) => {
+      this.upVotedData = result.rows
     }).catch( (err:any) => {
-      this.createIndexUpVote(db)
+      this.upVoteNewsView(db)
       console.log(err);
     });
-
-  }
-
-  createIndexUpVote(db:any){
-
-    db.createIndex({
-      index: {fields: ['upVote']}
-    }).then(() => {
-      this.upVotedNewsEvent(db)
-    })
 
   }
 
 
   latestNewsEvent(db:any){
 
-    db.find({
-      selector: { 
-        timestamp: { $gt:null  },
-      },
-      sort:[{'timestamp':'desc'}],
-      fields:['news'],
-      limit:5
-
-    }).then( (result:any) => {
-      this.latestNewsData = result.docs
-      console.log(result.docs)
+    db.query('allDocViews',{descending:true ,limit:5}).then( (result:any) => {
+      this.latestNewsData = result.rows
     }).catch( (err:any) => {
-      this.createIndex(db)
       console.log(err);
     });
 
   }
+
+  
+
+  upVoteNewsView(db:any){
+
+    let emit:any
+
+    let ddoc = {
+      _id: '_design/upVoteNewsView',
+      views: {
+        upVoteNewsView: {
+          map: function(doc:any) {
+            if(doc.upVote >= 7 ){
+              emit(doc.upVote,doc.news)
+            }
+          }.toString()
+        }
+      }
+    }
+    
+    
+    db.put(ddoc).catch(function (err:any) {
+      if (err.name !== 'conflict') {
+        throw err;
+      }
+    }).then( () => {
+      this.upVotedNewsEvent(db)
+    }).catch(function (err:any) {
+      console.log(err);
+    });
+
+  }
+
 
 
 }
