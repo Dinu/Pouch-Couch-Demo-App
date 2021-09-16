@@ -44,3 +44,11 @@ Git is cloned in another area and its going to push in git
 ## This is from main folder
 
 ## ******************************************************************************************************************************
+
+## ###########################################################################################
+
+
+## This is change from cloned folder and going to commit and push
+## After this only already commited changes are will be pushed
+
+## #############################################################################################
