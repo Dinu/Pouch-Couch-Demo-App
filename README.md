@@ -35,3 +35,12 @@ To get more help on the Angular CLI use `ng help` or go check out the [Angular C
 
 This is the changes in Fortest branch
 Git is cloned in another area and its going to push in git
+
+
+## ###########################################################################################
+
+
+## This is change from cloned folder and going to commit and push
+## After this only already commited changes are will be pushed
+
+## #############################################################################################
